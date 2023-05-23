@@ -26,7 +26,7 @@
 
   <actions>
     <!-- Add your actions here -->
-    <action id="layoutac" class="com.xxf.i18n.plugin.action.AndroidDirAction" text="xxf_android_i18n">
+    <action id="android_ac" class="com.xxf.i18n.plugin.action.AndroidDirAction" text="xxf_android_i18n">
       <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
     </action>
     <action id="ios_ac" class="com.xxf.i18n.plugin.action.IosDirAction" text="xxf_ios_i18n">
