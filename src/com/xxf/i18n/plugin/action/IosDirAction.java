@@ -3,6 +3,7 @@ package com.xxf.i18n.plugin.action;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.IdeActions;
 import com.intellij.openapi.actionSystem.PlatformDataKeys;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.StandardFileSystems;
@@ -76,6 +77,8 @@ public class IosDirAction extends AnAction {
             ex.printStackTrace();
             MessageUtils.showAlert(e,ex.getMessage());
         }
+
+        e.getActionManager().getAction(IdeActions.ACTION_SYNCHRONIZE).actionPerformed(e);
     }
 
     /**
@@ -163,7 +166,7 @@ public class IosDirAction extends AnAction {
 
     public  String replaceUsingSB(String fileName, String str, List<StringEntity> strings,Map<String,String> strDistinctMap) {
         StringBuilder sb = new StringBuilder(str.length());
-        Pattern p = Pattern.compile("(?=@\".{1,20}\")@\"[^$+,\\n\"{}]*[\\u4E00-\\u9FFF]+[^$+,\\n\"{}]*\"");
+        Pattern p = Pattern.compile("(?=@\".{1,150}\")@\"[^$+,\\n\"{}]*[\\u4E00-\\u9FFF]+[^$+,\\n\"{}]*\"");
         Matcher m = p.matcher(str);
         int lastIndex = 0;
         while (m.find()) {

@@ -1,5 +1,7 @@
 package com.xxf.i18n.plugin.action;
 
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.StandardFileSystems;
 import com.xxf.i18n.plugin.bean.StringEntity;
 import com.xxf.i18n.plugin.utils.FileUtils;
 import com.google.common.collect.Lists;
@@ -11,6 +13,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.IdeActions;
 import com.intellij.openapi.actionSystem.PlatformDataKeys;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.xxf.i18n.plugin.utils.MessageUtils;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
@@ -35,6 +38,29 @@ public class AndroidDirAction extends AnAction {
 
     @Override
     public void actionPerformed(AnActionEvent e) {
+        Project currentProject = e.getProject();
+        //检查项目的配置
+        String path= FileUtils.getConfigPathValue(currentProject);
+        if(path==null||path.length()<=0){
+            MessageUtils.showAlert(e,String.format("请在%s\n目录下面创建%s文件,且设置有效的生成文件路径(string.xml或者xxx.strings)",
+                    FileUtils.getConfigPathDir(currentProject).getPath(),
+                    FileUtils.getConfigPathFileName()));
+            return;
+        }
+        VirtualFile targetStringFile = StandardFileSystems.local().findFileByPath(path);
+        if (targetStringFile == null||!targetStringFile.exists()) {
+            MessageUtils.showAlert(e,String.format("请在%s\n目录下面创建%s文件,且设置有效的生成文件路径(string.xml或者xxx.strings)",
+                    FileUtils.getConfigPathDir(currentProject).getPath(),
+                    FileUtils.getConfigPathFileName()));
+            return;
+        }
+
+        String extension = targetStringFile.getExtension();
+        if (extension == null || !extension.equalsIgnoreCase("strings")) {
+            MessageUtils.showAlert(e,"生成的文件类型必须是strings");
+            return;
+        }
+
 
         VirtualFile file = e.getData(PlatformDataKeys.VIRTUAL_FILE);
         if (file == null) {
@@ -52,14 +78,12 @@ public class AndroidDirAction extends AnAction {
 
         VirtualFile[] children = file.getChildren();
         StringBuilder sb = new StringBuilder();
-        VirtualFile resDir = file.getParent();//获取layout文件夹的父文件夹，看是不是res
         if(file.getName().startsWith("layout")) {
             //遍历所有layout文件，然后获取其中的字串写到stringbuilder里面去
             for (VirtualFile child : children) {
                 layoutChild(child, sb);
             }
         }else if(file.getName().startsWith("java")){
-            resDir =  file.getParent().findChild("res");
             //避免重复 key 中文字符串 value 为已经生成的id
             Map<String,String> strDistinctMap= new  HashMap();
             //遍历所有 kt文件，然后获取其中的字串写到stringbuilder里面去
@@ -69,29 +93,14 @@ public class AndroidDirAction extends AnAction {
         }
 
 
-        //获取res文件夹下面的values
-        if (resDir.getName().equalsIgnoreCase("res")) {
-            VirtualFile[] chids = resDir.getChildren(); //获取res文件夹下面文件夹列表
-            for (VirtualFile chid : chids) { //遍历寻找values文件夹下面的strings文件
-                if (chid.getName().startsWith("values")) {
-                    if (chid.isDirectory()) {
-                        VirtualFile[] values = chid.getChildren();
-                        for (VirtualFile value : values) {
-                            if (value.getName().startsWith("strings")) { //找到第一个strings文件
-                                try {
-                                    String content = new String(value.contentsToByteArray(), "utf-8"); //源文件内容
-                                    System.out.println("utf-8=" + content);
-                                    String result = content.replace("</resources>", sb.toString() + "\n</resources>"); //在最下方加上新的字串
-                                    FileUtils.replaceContentToFile(value.getPath(), result);//替换文件
-                                } catch (IOException e1) {
-                                    e1.printStackTrace();
-                                    showError(e1.getMessage());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        try {
+            String content = new String(targetStringFile.contentsToByteArray(), "utf-8"); //源文件内容
+            String result = content.replace("</resources>", sb.toString() + "\n</resources>"); //在最下方加上新的字串
+            FileUtils.replaceContentToFile(targetStringFile.getPath(), result);//替换文件
+            MessageUtils.showAlert(e,"国际化执行完成");
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            MessageUtils.showAlert(e,ex.getMessage());
         }
 
         e.getActionManager().getAction(IdeActions.ACTION_SYNCHRONIZE).actionPerformed(e);
