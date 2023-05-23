@@ -1,0 +1,37 @@
+<idea-plugin>
+  <id>com.xxf.i18n.plugin</id>
+  <name>XXFi18nPlugin</name>
+  <version>1.2</version>
+  <vendor email="xuanyouwu@163.com" url="https://blog.csdn.net/axuanqq">xxf blog</vendor>
+
+  <description>
+          在android stuidio 或者appcode 编译工具中一键生成,教程查看https://blog.csdn.net/axuanqq
+  </description>
+
+  <change-notes>
+    1.0:first release
+    1.1:update desctiptions
+    1.2:update desctiptions
+  </change-notes>
+
+
+  <idea-version since-build="100.0"/>
+
+
+  <depends>com.intellij.modules.platform</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <!-- Add your extensions here -->
+  </extensions>
+
+  <actions>
+    <!-- Add your actions here -->
+    <action id="layoutac" class="com.xxf.i18n.plugin.action.LayoutDirAction" text="xxf_i18n">
+      <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+    </action>
+    <action id="tostringxml" class="com.xxf.i18n.plugin.action.ToStringXml" text="toStringxml">
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+    </action>
+  </actions>
+
+</idea-plugin>

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="JNative">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/JNative.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
