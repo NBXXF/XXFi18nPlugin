@@ -58,20 +58,15 @@ public class IosDirAction extends AnAction {
 
 
         Map<String,String> strDistinctMap= new HashMap();
+        //读取已经存在的 复用,这里建议都是按中文来
+        readFileToDict(targetStringFile,strDistinctMap);
+
         VirtualFile file = e.getData(PlatformDataKeys.VIRTUAL_FILE);
         StringBuilder sb = new StringBuilder();
         classChild(file,sb,strDistinctMap);
 
 
         try {
-            //读取已经存在的 复用,这里建议都是按中文来
-            readFileToDict(targetStringFile,strDistinctMap);
-            StringBuilder s=new StringBuilder();
-            for(Map.Entry<String,String> entry:strDistinctMap.entrySet()){
-                s.append(entry.getKey()+"="+entry.getValue());
-            };
-            MessageUtils.showAlert(e,"读取了:"+s);
-
             String content = new String(targetStringFile.contentsToByteArray(), "utf-8"); //源文件内容
             String result ="\n"+content+sb.toString();
             FileUtils.replaceContentToFile(targetStringFile.getPath(), result);//替换文件
