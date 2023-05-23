@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
  * layout或者java(仅支持kt)文件夹转成strings
  * Created by xyw on 2023/5/21.
  */
-public class LayoutDirAction extends AnAction {
+public class AndroidDirAction extends AnAction {
 
     private int index = 0;
 
@@ -302,10 +302,10 @@ public class LayoutDirAction extends AnAction {
 
 
     private void showHint(String msg) {
-        Notifications.Bus.notify(new Notification("DavidString", "DavidString", msg, NotificationType.WARNING));
+        Notifications.Bus.notify(new Notification("XXFi18nString", "DavidString", msg, NotificationType.WARNING));
     }
 
     private void showError(String msg) {
-        Notifications.Bus.notify(new Notification("DavidString", "DavidString", msg, NotificationType.ERROR));
+        Notifications.Bus.notify(new Notification("XXFi18nString", "DavidString", msg, NotificationType.ERROR));
     }
 }
