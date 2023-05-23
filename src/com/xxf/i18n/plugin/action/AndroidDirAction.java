@@ -56,8 +56,8 @@ public class AndroidDirAction extends AnAction {
         }
 
         String extension = targetStringFile.getExtension();
-        if (extension == null || !extension.equalsIgnoreCase("strings")) {
-            MessageUtils.showAlert(e,"生成的文件类型必须是strings");
+        if (extension == null || !extension.equalsIgnoreCase("xml")) {
+            MessageUtils.showAlert(e,"生成的文件类型必须是xml");
             return;
         }
 
