@@ -30,6 +30,8 @@ import java.util.regex.Pattern;
 public class IosDirAction extends AnAction {
 
     private int index = 0;
+    //避免重复 key 中文字符串 value 为已经生成的id
+    Map<String,String> strDistinctMap= new  HashMap();
 
     @Override
     public void actionPerformed(AnActionEvent e) {
@@ -38,14 +40,14 @@ public class IosDirAction extends AnAction {
         //检查项目的配置
         String path= FileUtils.getConfigPathValue(currentProject);
         if(path==null||path.length()<=0){
-            MessageUtils.showAlert(e,String.format("请在%s\n目录下面创建%s文件,且设置有效的生成文件路径(string.xml或者xxx.strings)",
+            MessageUtils.showAlert(e,String.format("请在%s\n目录下面创建%s文件,且设置有效的生成文件路径(xxx.strings)",
                     FileUtils.getConfigPathDir(currentProject).getPath(),
                     FileUtils.getConfigPathFileName()));
             return;
         }
         VirtualFile targetStringFile = StandardFileSystems.local().findFileByPath(path);
         if (targetStringFile == null||!targetStringFile.exists()) {
-            MessageUtils.showAlert(e,String.format("请在%s\n目录下面创建%s文件,且设置有效的生成文件路径(string.xml或者xxx.strings)",
+            MessageUtils.showAlert(e,String.format("请在%s\n目录下面创建%s文件,且设置有效的生成文件路径(xxx.strings)",
                     FileUtils.getConfigPathDir(currentProject).getPath(),
                     FileUtils.getConfigPathFileName()));
             return;
@@ -57,22 +59,31 @@ public class IosDirAction extends AnAction {
             return;
         }
 
+        VirtualFile eventFile = e.getData(PlatformDataKeys.VIRTUAL_FILE);
+        if (eventFile == null) {
+            MessageUtils.showAlert(e,"找不到目标文件");
+            return;
+        }
 
-        Map<String,String> strDistinctMap= new HashMap();
+        strDistinctMap.clear();
         //读取已经存在的 复用,这里建议都是按中文来
         readFileToDict(targetStringFile,strDistinctMap);
 
-        VirtualFile file = e.getData(PlatformDataKeys.VIRTUAL_FILE);
+
         StringBuilder sb = new StringBuilder();
-        classChild(file,sb,strDistinctMap);
+        int resultStart=strDistinctMap.size();
+        //扫描.m文件
+        classChild(eventFile,sb,strDistinctMap);
+        int resultCount=strDistinctMap.size()-resultStart;
 
 
         try {
-            String content = new String(targetStringFile.contentsToByteArray(), "utf-8"); //源文件内容
-            String result ="\n"+content+sb.toString();
-            FileUtils.replaceContentToFile(targetStringFile.getPath(), result);//替换文件
-
-            MessageUtils.showAlert(e,"国际化执行完成");
+            if(!sb.isEmpty()){
+                String content = new String(targetStringFile.contentsToByteArray(), "utf-8"); //源文件内容
+                String result ="\n"+content+sb.toString();
+                FileUtils.replaceContentToFile(targetStringFile.getPath(), result);//替换文件
+            }
+            MessageUtils.showAlert(e,String.format("国际化执行完成,新生成（%d)条结果",resultCount));
         } catch (IOException ex) {
             ex.printStackTrace();
             MessageUtils.showAlert(e,ex.getMessage());

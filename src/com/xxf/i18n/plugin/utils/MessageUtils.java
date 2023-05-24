@@ -19,7 +19,7 @@ public class MessageUtils {
                 "提示",
                 Messages.getInformationIcon());
     }
-    private static void showNotify(String msg) {
+    public static void showNotify(String msg) {
         Notifications.Bus.notify(new Notification("XXFi18nString", "提示", msg, NotificationType.INFORMATION));
     }
 }

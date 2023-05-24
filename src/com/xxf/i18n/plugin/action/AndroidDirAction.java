@@ -36,20 +36,22 @@ public class AndroidDirAction extends AnAction {
 
     private int index = 0;
 
+    //避免重复 key 中文字符串 value 为已经生成的id
+    Map<String,String> strDistinctMap= new  HashMap();
     @Override
     public void actionPerformed(AnActionEvent e) {
         Project currentProject = e.getProject();
         //检查项目的配置
         String path= FileUtils.getConfigPathValue(currentProject);
         if(path==null||path.length()<=0){
-            MessageUtils.showAlert(e,String.format("请在%s\n目录下面创建%s文件,且设置有效的生成文件路径(string.xml或者xxx.strings)",
+            MessageUtils.showAlert(e,String.format("请在%s\n目录下面创建%s文件,且设置有效的生成文件路径(string.xml)",
                     FileUtils.getConfigPathDir(currentProject).getPath(),
                     FileUtils.getConfigPathFileName()));
             return;
         }
         VirtualFile targetStringFile = StandardFileSystems.local().findFileByPath(path);
         if (targetStringFile == null||!targetStringFile.exists()) {
-            MessageUtils.showAlert(e,String.format("请在%s\n目录下面创建%s文件,且设置有效的生成文件路径(string.xml或者xxx.strings)",
+            MessageUtils.showAlert(e,String.format("请在%s\n目录下面创建%s文件,且设置有效的生成文件路径(string.xml)",
                     FileUtils.getConfigPathDir(currentProject).getPath(),
                     FileUtils.getConfigPathFileName()));
             return;
@@ -57,47 +59,43 @@ public class AndroidDirAction extends AnAction {
 
         String extension = targetStringFile.getExtension();
         if (extension == null || !extension.equalsIgnoreCase("xml")) {
-            MessageUtils.showAlert(e,"生成的文件类型必须是xml");
+            MessageUtils.showAlert(e,"生成的文件类型必须是string.xml");
             return;
         }
 
 
-        VirtualFile file = e.getData(PlatformDataKeys.VIRTUAL_FILE);
-        if (file == null) {
-            showError("找不到目标文件");
+        VirtualFile eventFile = e.getData(PlatformDataKeys.VIRTUAL_FILE);
+        if (eventFile == null) {
+            MessageUtils.showAlert(e,"找不到目标文件");
             return;
         }
 
-        if (!file.isDirectory()) {
-            showError("请选择layout或者java文件夹");
-            return;
-        } else if (!(file.getName().startsWith("layout")||file.getName().startsWith("java"))) {
-            showError("请选择layout或者java文件夹");
-            return;
-        }
 
-        VirtualFile[] children = file.getChildren();
+        strDistinctMap.clear();
         StringBuilder sb = new StringBuilder();
-        if(file.getName().startsWith("layout")) {
+        //layout 目录 可能是pad layout_s600dp等等
+        if(eventFile.isDirectory() && eventFile.getName().startsWith("layout")) {
             //遍历所有layout文件，然后获取其中的字串写到stringbuilder里面去
+            VirtualFile[] children = eventFile.getChildren();
             for (VirtualFile child : children) {
                 layoutChild(child, sb);
             }
-        }else if(file.getName().startsWith("java")){
-            //避免重复 key 中文字符串 value 为已经生成的id
-            Map<String,String> strDistinctMap= new  HashMap();
+        }else if(eventFile.getExtension()!=null && eventFile.getExtension().equalsIgnoreCase("xml")){
+            //可能是layout布局文件
+            layoutChild(eventFile, sb);
+        }else{
             //遍历所有 kt文件，然后获取其中的字串写到stringbuilder里面去
-            for (VirtualFile child : children) {
-                classChild(child, sb,strDistinctMap);
-            }
+            classChild(eventFile, sb);
         }
 
 
         try {
-            String content = new String(targetStringFile.contentsToByteArray(), "utf-8"); //源文件内容
-            String result = content.replace("</resources>", sb.toString() + "\n</resources>"); //在最下方加上新的字串
-            FileUtils.replaceContentToFile(targetStringFile.getPath(), result);//替换文件
-            MessageUtils.showAlert(e,"国际化执行完成");
+            if(!sb.isEmpty()) {
+                String content = new String(targetStringFile.contentsToByteArray(), "utf-8"); //源文件内容
+                String result = content.replace("</resources>", sb.toString() + "\n</resources>"); //在最下方加上新的字串
+                FileUtils.replaceContentToFile(targetStringFile.getPath(), result);//替换文件
+            }
+            MessageUtils.showAlert(e,String.format("国际化执行完成,新生成（%d)条结果",strDistinctMap.size()));
         } catch (IOException ex) {
             ex.printStackTrace();
             MessageUtils.showAlert(e,ex.getMessage());
@@ -112,12 +110,12 @@ public class AndroidDirAction extends AnAction {
      * @param file
      * @param sb
      */
-    private  void classChild(VirtualFile file, StringBuilder sb,Map<String,String> strDistinctMap){
+    private  void classChild(VirtualFile file, StringBuilder sb){
         index = 0;
         if(file.isDirectory()){
             VirtualFile[] children = file.getChildren();
             for (VirtualFile child : children) {
-                classChild(child,sb,strDistinctMap);
+                classChild(child,sb);
             }
         }else{
             String extension = file.getExtension();
@@ -164,18 +162,18 @@ public class AndroidDirAction extends AnAction {
         while (m.find()) {
             sb.append(str, lastIndex, m.start());
 
-            String subStr=m.group();
+            String value=m.group();
             //去除前后的双引号
-            if(subStr.startsWith("\"")&&subStr.endsWith("\"")){
-                subStr=subStr.substring(1,subStr.length()-1);
+            if(value.startsWith("\"")&&value.endsWith("\"")){
+                value=value.substring(1,value.length()-1);
             }
             //复用已经存在的
-            String id=strDistinctMap.get(subStr);
+            String id=strDistinctMap.get(value);
             if(id==null||id.length()<=0){
                 //生成新的id
                 id = currentIdString(fileName);
-                strDistinctMap.put(subStr,id);
-                strings.add(new StringEntity(id, subStr));
+                strDistinctMap.put(value,id);
+                strings.add(new StringEntity(id, value));
             }
 
             sb.append("com.xxf.application.applicationContext.getString(com.next.space.cflow.resources.R.string."+id+")");
@@ -197,12 +195,12 @@ public class AndroidDirAction extends AnAction {
         String extension = file.getExtension();
         if (extension != null && extension.equalsIgnoreCase("xml")) {
             if (!file.getParent().getName().startsWith("layout")) {
-                showError("请选择布局文件");
+                MessageUtils.showNotify("请选择布局文件");
                 return;
             }
         }
 
-//        showHint(file.getName());
+
         List<StringEntity> strings;
         StringBuilder oldContent = new StringBuilder();
         try {
@@ -252,8 +250,15 @@ public class AndroidDirAction extends AnAction {
             if (stringNode != null) {
                 String value = stringNode.getNodeValue();
                 if (!value.contains("@string")) {
-                    final String id = currentIdString(fileName);
-                    strings.add(new StringEntity(id, value));
+                    //复用已经存在的
+                    String id=strDistinctMap.get(value);
+                    if(id==null||id.length()<=0){
+                        //生成新的id
+                        id = currentIdString(fileName);
+                        strDistinctMap.put(value,id);
+                        strings.add(new StringEntity(id, value));
+                    }
+
                     String newContent = oldContent.toString().replaceFirst("\"" + value + "\"", "\"@string/" + id + "\"");
                     oldContent = oldContent.replace(0, oldContent.length(), newContent);
                 }
@@ -262,8 +267,15 @@ public class AndroidDirAction extends AnAction {
             if (hintNode != null) {
                 String value = hintNode.getNodeValue();
                 if (!value.contains("@string")) {
-                    final String id = currentIdString(fileName);
-                    strings.add(new StringEntity(id, value));
+                    //复用已经存在的
+                    String id=strDistinctMap.get(value);
+                    if(id==null||id.length()<=0){
+                        //生成新的id
+                        id = currentIdString(fileName);
+                        strDistinctMap.put(value,id);
+                        strings.add(new StringEntity(id, value));
+                    }
+
                     String newContent = oldContent.toString().replaceFirst("\"" + value + "\"", "\"@string/" + id + "\"");
                     oldContent = oldContent.replace(0, oldContent.length(), newContent);
                 }
@@ -273,8 +285,15 @@ public class AndroidDirAction extends AnAction {
             if (leftTitleNode != null) {
                 String value = leftTitleNode.getNodeValue();
                 if (!value.contains("@string")) {
-                    final String id = currentIdString(fileName);
-                    strings.add(new StringEntity(id, value));
+                    //复用已经存在的
+                    String id=strDistinctMap.get(value);
+                    if(id==null||id.length()<=0){
+                        //生成新的id
+                        id = currentIdString(fileName);
+                        strDistinctMap.put(value,id);
+                        strings.add(new StringEntity(id, value));
+                    }
+
                     String newContent = oldContent.toString().replaceFirst("\"" + value + "\"", "\"@string/" + id + "\"");
                     oldContent = oldContent.replace(0, oldContent.length(), newContent);
                 }
@@ -284,8 +303,15 @@ public class AndroidDirAction extends AnAction {
             if (rightTitleNode != null) {
                 String value = rightTitleNode.getNodeValue();
                 if (!value.contains("@string")) {
-                    final String id = currentIdString(fileName);
-                    strings.add(new StringEntity(id, value));
+                    //复用已经存在的
+                    String id=strDistinctMap.get(value);
+                    if(id==null||id.length()<=0){
+                        //生成新的id
+                        id = currentIdString(fileName);
+                        strDistinctMap.put(value,id);
+                        strings.add(new StringEntity(id, value));
+                    }
+
                     String newContent = oldContent.toString().replaceFirst("\"" + value + "\"", "\"@string/" + id + "\"");
                     oldContent = oldContent.replace(0, oldContent.length(), newContent);
                 }
@@ -295,8 +321,15 @@ public class AndroidDirAction extends AnAction {
             if (titleTitleNode != null) {
                 String value = titleTitleNode.getNodeValue();
                 if (!value.contains("@string")) {
-                    final String id = currentIdString(fileName);
-                    strings.add(new StringEntity(id, value));
+                    //复用已经存在的
+                    String id=strDistinctMap.get(value);
+                    if(id==null||id.length()<=0){
+                        //生成新的id
+                        id = currentIdString(fileName);
+                        strDistinctMap.put(value,id);
+                        strings.add(new StringEntity(id, value));
+                    }
+
                     String newContent = oldContent.toString().replaceFirst("\"" + value + "\"", "\"@string/" + id + "\"");
                     oldContent = oldContent.replace(0, oldContent.length(), newContent);
                 }
@@ -309,12 +342,4 @@ public class AndroidDirAction extends AnAction {
         return strings;
     }
 
-
-    private void showHint(String msg) {
-        Notifications.Bus.notify(new Notification("XXFi18nString", "DavidString", msg, NotificationType.WARNING));
-    }
-
-    private void showError(String msg) {
-        Notifications.Bus.notify(new Notification("XXFi18nString", "DavidString", msg, NotificationType.ERROR));
-    }
 }

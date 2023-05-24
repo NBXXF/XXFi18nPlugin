@@ -5,7 +5,9 @@
   <vendor email="xuanyouwu@163.com" url="https://blog.csdn.net/axuanqq/article/details/130823769?spm=1001.2014.3001.5502">xxf blog</vendor>
 
   <description>
-          在android stuidio 或者appcode 编译工具中一键生成,教程查看https://blog.csdn.net/axuanqq
+    在android stuidio 或者appcode 编译工具中一键生成,教程查看https://blog.csdn.net/axuanqq/article/details/130823769?spm=1001.2014.3001.5502  \n
+    1. Android支持layout目录 支持layout.xml 支持.kt文件扫描,支持任意目录( 会扫描其中的.kt文件)
+    2. ios 支持.m文件扫描 支持任意目录(会扫描其中的.m文件)
   </description>
 
   <change-notes>
