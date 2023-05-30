@@ -99,6 +99,10 @@ public class AndroidDirAction extends AnAction {
 
             Map<String, List<String>> repeatRecords = AndroidStringFileUtils.getRepeatRecords(targetStringFile);
             StringBuilder repeatStringBuilder=new StringBuilder("重复条数:"+repeatRecords.size());
+            if(repeatRecords.size()>0){
+                repeatStringBuilder.append("\n请确认是否xxf_i18n_plugin_path.txt是中文清单,否则去重没有意义");
+                repeatStringBuilder.append("\n请确认是否xxf_i18n_plugin_path.txt是中文清单,否则去重没有意义");
+            }
             for(Map.Entry<String,List<String>> entry : repeatRecords.entrySet()){
                 repeatStringBuilder.append("\nvalue:"+entry.getKey());
                 repeatStringBuilder.append("\nkeys:");
