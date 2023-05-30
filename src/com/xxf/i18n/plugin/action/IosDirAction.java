@@ -31,7 +31,7 @@ public class IosDirAction extends AnAction {
 
     private int index = 0;
     //避免重复 key 中文字符串 value 为已经生成的id
-    Map<String,String> strDistinctMap= new  HashMap();
+    Map<String,String> valueKeyMap = new  HashMap();
 
     @Override
     public void actionPerformed(AnActionEvent e) {
@@ -65,16 +65,16 @@ public class IosDirAction extends AnAction {
             return;
         }
 
-        strDistinctMap.clear();
+        valueKeyMap.clear();
         //读取已经存在的 复用,这里建议都是按中文来
-        readFileToDict(targetStringFile,strDistinctMap);
+        readFileToDict(targetStringFile);
 
 
         StringBuilder sb = new StringBuilder();
-        int resultStart=strDistinctMap.size();
+        int resultStart= valueKeyMap.size();
         //扫描.m文件
-        classChild(eventFile,sb,strDistinctMap);
-        int resultCount=strDistinctMap.size()-resultStart;
+        classChild(eventFile,sb, valueKeyMap);
+        int resultCount= valueKeyMap.size()-resultStart;
 
 
         try {
@@ -95,9 +95,8 @@ public class IosDirAction extends AnAction {
     /**
      * 将已经存在字符串读取到字典里面 避免重复
      * @param file
-     * @param strDistinctMap
      */
-    private void readFileToDict( VirtualFile file,Map<String,String> strDistinctMap){
+    private void readFileToDict( VirtualFile file){
         try  {
             BufferedReader br
                     = new BufferedReader(new InputStreamReader(file.getInputStream()));
@@ -115,8 +114,9 @@ public class IosDirAction extends AnAction {
                         if(value.startsWith("\"")&&value.endsWith("\";")){
                             value=value.substring(1,value.length()-2);
                         }
-
-                        strDistinctMap.put(value,key);
+                        if(!valueKeyMap.containsKey(value)){
+                            valueKeyMap.put(value,key);
+                        }
                     }
                 }
             }

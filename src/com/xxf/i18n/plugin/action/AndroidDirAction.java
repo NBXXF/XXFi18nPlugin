@@ -5,9 +5,6 @@ import com.intellij.openapi.vfs.StandardFileSystems;
 import com.xxf.i18n.plugin.bean.StringEntity;
 import com.xxf.i18n.plugin.utils.FileUtils;
 import com.google.common.collect.Lists;
-import com.intellij.notification.Notification;
-import com.intellij.notification.NotificationType;
-import com.intellij.notification.Notifications;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.IdeActions;
@@ -20,8 +17,7 @@ import org.xml.sax.SAXException;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +33,7 @@ public class AndroidDirAction extends AnAction {
     private int index = 0;
 
     //避免重复 key 中文字符串 value 为已经生成的id
-    Map<String,String> strDistinctMap= new  HashMap();
+    Map<String,String> valueKeyMap = new  HashMap();
     @Override
     public void actionPerformed(AnActionEvent e) {
         Project currentProject = e.getProject();
@@ -71,7 +67,11 @@ public class AndroidDirAction extends AnAction {
         }
 
 
-        strDistinctMap.clear();
+        valueKeyMap.clear();
+        //读取已经存在的 复用,这里建议都是按中文来
+        readFileToDict(targetStringFile);
+        int resultStart= valueKeyMap.size();
+
         StringBuilder sb = new StringBuilder();
         //layout 目录 可能是pad layout_s600dp等等
         if(eventFile.isDirectory() && eventFile.getName().startsWith("layout")) {
@@ -87,7 +87,7 @@ public class AndroidDirAction extends AnAction {
             //遍历所有 kt文件，然后获取其中的字串写到stringbuilder里面去
             classChild(eventFile, sb);
         }
-
+        int resultCount= valueKeyMap.size()-resultStart;
 
         try {
             if(!sb.isEmpty()) {
@@ -95,7 +95,7 @@ public class AndroidDirAction extends AnAction {
                 String result = content.replace("</resources>", sb.toString() + "\n</resources>"); //在最下方加上新的字串
                 FileUtils.replaceContentToFile(targetStringFile.getPath(), result);//替换文件
             }
-            MessageUtils.showAlert(e,String.format("国际化执行完成,新生成（%d)条结果",strDistinctMap.size()));
+            MessageUtils.showAlert(e,String.format("国际化执行完成,新生成（%d)条结果", resultCount));
         } catch (IOException ex) {
             ex.printStackTrace();
             MessageUtils.showAlert(e,ex.getMessage());
@@ -104,6 +104,47 @@ public class AndroidDirAction extends AnAction {
         e.getActionManager().getAction(IdeActions.ACTION_SYNCHRONIZE).actionPerformed(e);
     }
 
+    /**
+     * 将已经存在字符串读取到字典里面 避免重复
+     * @param file
+     */
+    private void readFileToDict(VirtualFile file){
+        InputStream is = null;
+        try {
+            is = file.getInputStream();
+//            String str="<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+//                    "<resources>\n" +
+//                    "    <string name=\"flowus_app_name\">FlowUs 息流</string>\n" +
+//                    "    <string name=\"app_name\">FlowUs 息流</string>\n" +
+//                    "    <string name=\"ok\">确定</string>\n" +
+//                    "</resources>";
+//            is =new ByteArrayInputStream(str.getBytes());
+            Node node=DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(is);
+            this.findStringNode(node);
+        } catch (Throwable ex) {
+            ex.printStackTrace();
+        } finally {
+            FileUtils.closeQuietly(is);
+        }
+
+    }
+
+    private void findStringNode(Node node){
+        if (node.getNodeType() == Node.ELEMENT_NODE
+                &&"string".equals(node.getNodeName())) {
+            Node key = node.getAttributes().getNamedItem("name");
+            if(key!=null) {
+                String valueKey=node.getTextContent();
+                if(!this.valueKeyMap.containsKey(valueKey)){
+                    this.valueKeyMap.put(valueKey,key.getNodeValue());
+                }
+            }
+        }
+        NodeList children = node.getChildNodes();
+        for (int j = 0; j < children.getLength(); j++) {
+            findStringNode(children.item(j));
+        }
+    }
 
     /**
      *  执行 java 文件和kt文件
@@ -130,7 +171,7 @@ public class AndroidDirAction extends AnAction {
                 InputStream is = null;
                 try {
                     is = file.getInputStream();
-                    strings = extraClassEntity(is, file.getNameWithoutExtension().toLowerCase(), oldContent,strDistinctMap);
+                    strings = extraClassEntity(is, file.getNameWithoutExtension().toLowerCase(), oldContent, valueKeyMap);
                     if (strings != null) {
                         for (StringEntity string : strings) {
                             sb.append("\n    <string name=\"" + string.getId() + "\">" + string.getValue() + "</string>");
@@ -251,11 +292,11 @@ public class AndroidDirAction extends AnAction {
                 String value = stringNode.getNodeValue();
                 if (!value.contains("@string")) {
                     //复用已经存在的
-                    String id=strDistinctMap.get(value);
+                    String id= valueKeyMap.get(value);
                     if(id==null||id.length()<=0){
                         //生成新的id
                         id = currentIdString(fileName);
-                        strDistinctMap.put(value,id);
+                        valueKeyMap.put(value,id);
                         strings.add(new StringEntity(id, value));
                     }
 
@@ -268,11 +309,11 @@ public class AndroidDirAction extends AnAction {
                 String value = hintNode.getNodeValue();
                 if (!value.contains("@string")) {
                     //复用已经存在的
-                    String id=strDistinctMap.get(value);
+                    String id= valueKeyMap.get(value);
                     if(id==null||id.length()<=0){
                         //生成新的id
                         id = currentIdString(fileName);
-                        strDistinctMap.put(value,id);
+                        valueKeyMap.put(value,id);
                         strings.add(new StringEntity(id, value));
                     }
 
@@ -286,11 +327,11 @@ public class AndroidDirAction extends AnAction {
                 String value = leftTitleNode.getNodeValue();
                 if (!value.contains("@string")) {
                     //复用已经存在的
-                    String id=strDistinctMap.get(value);
+                    String id= valueKeyMap.get(value);
                     if(id==null||id.length()<=0){
                         //生成新的id
                         id = currentIdString(fileName);
-                        strDistinctMap.put(value,id);
+                        valueKeyMap.put(value,id);
                         strings.add(new StringEntity(id, value));
                     }
 
@@ -304,11 +345,11 @@ public class AndroidDirAction extends AnAction {
                 String value = rightTitleNode.getNodeValue();
                 if (!value.contains("@string")) {
                     //复用已经存在的
-                    String id=strDistinctMap.get(value);
+                    String id= valueKeyMap.get(value);
                     if(id==null||id.length()<=0){
                         //生成新的id
                         id = currentIdString(fileName);
-                        strDistinctMap.put(value,id);
+                        valueKeyMap.put(value,id);
                         strings.add(new StringEntity(id, value));
                     }
 
@@ -322,11 +363,11 @@ public class AndroidDirAction extends AnAction {
                 String value = titleTitleNode.getNodeValue();
                 if (!value.contains("@string")) {
                     //复用已经存在的
-                    String id=strDistinctMap.get(value);
+                    String id= valueKeyMap.get(value);
                     if(id==null||id.length()<=0){
                         //生成新的id
                         id = currentIdString(fileName);
-                        strDistinctMap.put(value,id);
+                        valueKeyMap.put(value,id);
                         strings.add(new StringEntity(id, value));
                     }
 
