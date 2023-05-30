@@ -3,6 +3,7 @@ package com.xxf.i18n.plugin.action;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.StandardFileSystems;
 import com.xxf.i18n.plugin.bean.StringEntity;
+import com.xxf.i18n.plugin.utils.AndroidStringFileUtils;
 import com.xxf.i18n.plugin.utils.FileUtils;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.actionSystem.AnAction;
@@ -95,7 +96,20 @@ public class AndroidDirAction extends AnAction {
                 String result = content.replace("</resources>", sb.toString() + "\n</resources>"); //在最下方加上新的字串
                 FileUtils.replaceContentToFile(targetStringFile.getPath(), result);//替换文件
             }
-            MessageUtils.showAlert(e,String.format("国际化执行完成,新生成（%d)条结果", resultCount));
+
+            Map<String, List<String>> repeatRecords = AndroidStringFileUtils.getRepeatRecords(targetStringFile);
+            StringBuilder repeatStringBuilder=new StringBuilder("重复条数:"+repeatRecords.size());
+            for(Map.Entry<String,List<String>> entry : repeatRecords.entrySet()){
+                repeatStringBuilder.append("\nvalue:"+entry.getKey());
+                repeatStringBuilder.append("\nkeys:");
+                for (String key:entry.getValue()) {
+                    repeatStringBuilder.append("\n");
+                    repeatStringBuilder.append(key);
+                }
+                repeatStringBuilder.append("\n\n");
+            }
+
+            MessageUtils.showAlert(e,String.format("国际化执行完成,新生成（%d)条结果,%s", resultCount,repeatStringBuilder.toString()));
         } catch (IOException ex) {
             ex.printStackTrace();
             MessageUtils.showAlert(e,ex.getMessage());
