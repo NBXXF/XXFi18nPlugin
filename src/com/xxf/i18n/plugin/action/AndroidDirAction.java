@@ -12,6 +12,7 @@ import com.intellij.openapi.actionSystem.IdeActions;
 import com.intellij.openapi.actionSystem.PlatformDataKeys;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.xxf.i18n.plugin.utils.MessageUtils;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
@@ -19,6 +20,7 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,10 +33,15 @@ import java.util.regex.Pattern;
  */
 public class AndroidDirAction extends AnAction {
 
+    /**
+     *解析的属性名
+     */
+    private List<String> textAttributeNamesList = Arrays.asList("android:text","android:hint","app:leftText","app:rightText","app:titleText");
     private int index = 0;
 
     //避免重复 key 中文字符串 value 为已经生成的id
     Map<String,String> valueKeyMap = new  HashMap();
+
     @Override
     public void actionPerformed(AnActionEvent e) {
         Project currentProject = e.getProject();
@@ -305,92 +312,24 @@ public class AndroidDirAction extends AnAction {
 
     private List<StringEntity> generateStrings(Node node, List<StringEntity> strings, String fileName, StringBuilder oldContent) {
         if (node.getNodeType() == Node.ELEMENT_NODE) {
-            Node stringNode = node.getAttributes().getNamedItem("android:text");
-            if (stringNode != null) {
-                String value = stringNode.getNodeValue();
-                if (!value.contains("@string")) {
-                    //复用已经存在的
-                    String id= valueKeyMap.get(value);
-                    if(id==null||id.length()<=0){
-                        //生成新的id
-                        id = currentIdString(fileName);
-                        valueKeyMap.put(value,id);
-                        strings.add(new StringEntity(id, value));
+            NamedNodeMap attributes = node.getAttributes();
+            for (int i = 0; i <attributes.getLength() ; i++) {
+                Node item = attributes.item(i);
+                if(textAttributeNamesList.contains(item.getNodeName())){
+                    String value = item.getNodeValue();
+                    if (value!=null && !value.contains("@string")) {
+                        //复用已经存在的
+                        String id= valueKeyMap.get(value);
+                        if(id==null||id.length()<=0){
+                            //生成新的id
+                            id = currentIdString(fileName);
+                            valueKeyMap.put(value,id);
+                            strings.add(new StringEntity(id, value));
+                        }
+
+                        String newContent = oldContent.toString().replaceFirst("\"" + value + "\"", "\"@string/" + id + "\"");
+                        oldContent = oldContent.replace(0, oldContent.length(), newContent);
                     }
-
-                    String newContent = oldContent.toString().replaceFirst("\"" + value + "\"", "\"@string/" + id + "\"");
-                    oldContent = oldContent.replace(0, oldContent.length(), newContent);
-                }
-            }
-            Node hintNode = node.getAttributes().getNamedItem("android:hint");
-            if (hintNode != null) {
-                String value = hintNode.getNodeValue();
-                if (!value.contains("@string")) {
-                    //复用已经存在的
-                    String id= valueKeyMap.get(value);
-                    if(id==null||id.length()<=0){
-                        //生成新的id
-                        id = currentIdString(fileName);
-                        valueKeyMap.put(value,id);
-                        strings.add(new StringEntity(id, value));
-                    }
-
-                    String newContent = oldContent.toString().replaceFirst("\"" + value + "\"", "\"@string/" + id + "\"");
-                    oldContent = oldContent.replace(0, oldContent.length(), newContent);
-                }
-            }
-
-            Node leftTitleNode = node.getAttributes().getNamedItem("app:leftText");
-            if (leftTitleNode != null) {
-                String value = leftTitleNode.getNodeValue();
-                if (!value.contains("@string")) {
-                    //复用已经存在的
-                    String id= valueKeyMap.get(value);
-                    if(id==null||id.length()<=0){
-                        //生成新的id
-                        id = currentIdString(fileName);
-                        valueKeyMap.put(value,id);
-                        strings.add(new StringEntity(id, value));
-                    }
-
-                    String newContent = oldContent.toString().replaceFirst("\"" + value + "\"", "\"@string/" + id + "\"");
-                    oldContent = oldContent.replace(0, oldContent.length(), newContent);
-                }
-            }
-
-            Node rightTitleNode = node.getAttributes().getNamedItem("app:rightText");
-            if (rightTitleNode != null) {
-                String value = rightTitleNode.getNodeValue();
-                if (!value.contains("@string")) {
-                    //复用已经存在的
-                    String id= valueKeyMap.get(value);
-                    if(id==null||id.length()<=0){
-                        //生成新的id
-                        id = currentIdString(fileName);
-                        valueKeyMap.put(value,id);
-                        strings.add(new StringEntity(id, value));
-                    }
-
-                    String newContent = oldContent.toString().replaceFirst("\"" + value + "\"", "\"@string/" + id + "\"");
-                    oldContent = oldContent.replace(0, oldContent.length(), newContent);
-                }
-            }
-
-            Node titleTitleNode = node.getAttributes().getNamedItem("app:titleText");
-            if (titleTitleNode != null) {
-                String value = titleTitleNode.getNodeValue();
-                if (!value.contains("@string")) {
-                    //复用已经存在的
-                    String id= valueKeyMap.get(value);
-                    if(id==null||id.length()<=0){
-                        //生成新的id
-                        id = currentIdString(fileName);
-                        valueKeyMap.put(value,id);
-                        strings.add(new StringEntity(id, value));
-                    }
-
-                    String newContent = oldContent.toString().replaceFirst("\"" + value + "\"", "\"@string/" + id + "\"");
-                    oldContent = oldContent.replace(0, oldContent.length(), newContent);
                 }
             }
         }
