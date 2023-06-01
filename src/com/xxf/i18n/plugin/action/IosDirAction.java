@@ -80,7 +80,7 @@ public class IosDirAction extends AnAction {
         try {
             if(!sb.isEmpty()){
                 String content = new String(targetStringFile.contentsToByteArray(), "utf-8"); //源文件内容
-                String result ="\n"+content+sb.toString();
+                String result = content+sb.toString();
                 FileUtils.replaceContentToFile(targetStringFile.getPath(), result);//替换文件
             }
             MessageUtils.showAlert(e,String.format("国际化执行完成,新生成（%d)条结果",resultCount));
